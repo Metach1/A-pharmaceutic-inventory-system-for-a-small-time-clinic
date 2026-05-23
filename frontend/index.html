@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Clinic Management System</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: Arial, sans-serif;
+      color: #333;
+    }
+    .container {
+      max-width: 1150px;
+      margin: 20px auto;
+      padding: 0 15px 40px;
+    }
+    h3, h5 { margin: 0; }
+    .page-header { margin-bottom: 16px; }
+    .page-header p { margin-top: 6px; color: #666; }
+    .nav-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .nav-btn {
+      border: 1px solid #adb5bd;
+      background: #ffffff;
+      color: #495057;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .nav-btn.active,
+    .nav-btn:hover {
+      background: #495057;
+      color: #ffffff;
+      border-color: #495057;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+    .card p { margin-bottom: 0; }
+    .table thead {
+      background-color: #e9ecef;
+      color: #212529;
+    }
+    .table th, .table td {
+      font-size: 13px;
+      vertical-align: middle;
+      padding: 8px;
+    }
+    .form-label { font-size: 13px; }
+    .btn-sm { font-size: 12px; }
+    #toast-container {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      z-index: 9999;
+    }
+    .toast-msg {
+      background: #343a40;
+      color: white;
+      padding: 10px 14px;
+      border-radius: 4px;
+      margin-top: 8px;
+      font-size: 13px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .toast-msg.show { opacity: 1; }
+    .page { display: none; }
+    .page.active { display: block; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="page-header">
+    <h3>Clinic Management System</h3>
+    <p>Simple student CRUD app for clinic records.</p>
+  </div>
+
+  <div class="nav-row">
+    <button class="nav-btn active" onclick="showPage('dashboard', this)">Dashboard</button>
+    <button class="nav-btn" onclick="showPage('drugs', this)">Drugs</button>
+    <button class="nav-btn" onclick="showPage('inventory', this)">Inventory</button>
+    <button class="nav-btn" onclick="showPage('patients', this)">Patients</button>
+    <button class="nav-btn" onclick="showPage('doctors', this)">Doctors</button>
+    <button class="nav-btn" onclick="showPage('visits', this)">Visits</button>
+    <button class="nav-btn" onclick="showPage('prescriptions', this)">Prescriptions</button>
+    <button class="nav-btn" onclick="showPage('billings', this)">Billings</button>
+  </div>
+
+  <div id="page-dashboard" class="page active">
+    <div class="card p-3 mb-3">
+      <h5>Dashboard</h5>
+      <div class="row g-3 mt-3" id="dashboard-cards">
+        <div class="col-md-4"><div class="card p-3 text-center"><h6>Drugs</h6><h3 id="count-drugs">—</h3></div></div>
+        <div class="col-md-4"><div class="card p-3 text-center"><h6>Patients</h6><h3 id="count-patients">—</h3></div></div>
+        <div class="col-md-4"><div class="card p-3 text-center"><h6>Doctors</h6><h3 id="count-doctors">—</h3></div></div>
+        <div class="col-md-4"><div class="card p-3 text-center"><h6>Visits</h6><h3 id="count-visits">—</h3></div></div>
+        <div class="col-md-4"><div class="card p-3 text-center"><h6>Inventory Records</h6><h3 id="count-inventory">—</h3></div></div>
+        <div class="col-md-4"><div class="card p-3 text-center"><h6>Billings</h6><h3 id="count-billings">—</h3></div></div>
+      </div>
+      <div class="mt-3">
+        <p id="status-text" style="font-size:13px; color:#495057; margin-bottom:0;">Use the navigation buttons above to manage records.</p>
+      </div>
+    </div>
+    <div class="card p-3 mb-3" style="opacity:0.85; font-size:13px;">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <span>API Base URL</span>
+        <input type="text" id="api-url" class="form-control form-control-sm" value="http://localhost:8000" style="min-width:240px; max-width:420px;"/>
+        <button class="btn btn-sm btn-secondary" onclick="refreshDashboard()">Connect</button>
+      </div>
+      <p style="margin:8px 0 0; color:#6c757d;">Hidden here so the top navigation stays simple.</p>
+    </div>
+  </div>
+
+  <div id="page-drugs" class="page">
+    <div class="card p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Drugs</h5>
+        <button class="btn btn-sm btn-primary" onclick="openModal('drug')">+ Add Drug</button>
+      </div>
+      <table class="table table-bordered table-hover mb-0">
+        <thead><tr><th>ID</th><th>Generic Name</th><th>Brand Name</th><th>Dosage Form</th><th>Reg. Class</th><th>Reorder Level</th><th>Actions</th></tr></thead>
+        <tbody id="table-drugs"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="page-inventory" class="page">
+    <div class="card p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Inventory</h5>
+        <button class="btn btn-sm btn-primary" onclick="openModal('inventory')">+ Add Record</button>
+      </div>
+      <table class="table table-bordered table-hover mb-0">
+        <thead><tr><th>ID</th><th>Drug ID</th><th>Qty</th><th>Unit Cost</th><th>Unit Price</th><th>Expiry Date</th><th>Last Restocked</th><th>Actions</th></tr></thead>
+        <tbody id="table-inventory"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="page-patients" class="page">
+    <div class="card p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Patients</h5>
+        <button class="btn btn-sm btn-primary" onclick="openModal('patient')">+ Add Patient</button>
+      </div>
+      <table class="table table-bordered table-hover mb-0">
+        <thead><tr><th>ID</th><th>Full Name</th><th>Date of Birth</th><th>Sex</th><th>Phone</th><th>PhilHealth No.</th><th>Actions</th></tr></thead>
+        <tbody id="table-patients"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="page-doctors" class="page">
+    <div class="card p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Doctors</h5>
+        <button class="btn btn-sm btn-primary" onclick="openModal('doctor')">+ Add Doctor</button>
+      </div>
+      <table class="table table-bordered table-hover mb-0">
+        <thead><tr><th>ID</th><th>Full Name</th><th>PRC License No.</th><th>Specialization</th><th>Phone</th><th>Actions</th></tr></thead>
+        <tbody id="table-doctors"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="page-visits" class="page">
+    <div class="card p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Visits</h5>
+        <button class="btn btn-sm btn-primary" onclick="openModal('visit')">+ Add Visit</button>
+      </div>
+      <table class="table table-bordered table-hover mb-0">
+        <thead><tr><th>ID</th><th>Doctor ID</th><th>Patient ID</th><th>Visit Date</th><th>Notes</th><th>Actions</th></tr></thead>
+        <tbody id="table-visits"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="page-prescriptions" class="page">
+    <div class="card p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Prescriptions</h5>
+        <button class="btn btn-sm btn-primary" onclick="openModal('prescription')">+ Add Prescription</button>
+      </div>
+      <table class="table table-bordered table-hover mb-0">
+        <thead><tr><th>ID</th><th>Visit ID</th><th>Drug ID</th><th>Instruction</th><th>Qty Prescribed</th><th>Actions</th></tr></thead>
+        <tbody id="table-prescriptions"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="page-billings" class="page">
+    <div class="card p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Billings</h5>
+        <button class="btn btn-sm btn-primary" onclick="openModal('billing')">+ Add Billing</button>
+      </div>
+      <table class="table table-bordered table-hover mb-0">
+        <thead><tr><th>ID</th><th>Visit ID</th><th>Doctor ID</th><th>Total Fee</th><th>Payment Method</th><th>Paid On</th><th>Actions</th></tr></thead>
+        <tbody id="table-billings"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="formModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-title">Add Record</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="submitForm()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  const API = () => document.getElementById('api-url').value.replace(/\/$/, '');
+
+  let currentEntity = '';
+  let currentId = null;
+  let modalInstance = null;
+
+  // ── Navigation ──────────────────────────────────────────────────────────────
+  function showPage(name, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(a => a.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    if (el) el.classList.add('active');
+    if (name === 'dashboard') {
+      refreshDashboard();
+    } else {
+      loadTable(name);
+    }
+  }
+
+  // ── Toast ───────────────────────────────────────────────────────────────────
+  function toast(msg) {
+    const el = document.createElement('div');
+    el.className = 'toast-msg';
+    el.textContent = msg;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.classList.add('show'), 50);
+    setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 2500);
+  }
+
+  // ── API Helpers ─────────────────────────────────────────────────────────────
+  async function apiFetch(path, method='GET', body=null) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(API() + path, opts);
+    if (!res.ok) throw new Error(await res.text());
+    if (res.status === 204) return null;
+    return res.json();
+  }
+
+  // ── Dashboard ───────────────────────────────────────────────────────────────
+  async function refreshDashboard(showToast = true) {
+    const endpoints = ['drugs','patients','doctors','visits','inventory','billings'];
+    for (const e of endpoints) {
+      try {
+        const data = await apiFetch('/' + e + '/');
+        document.getElementById('count-' + e).textContent = data.length;
+      } catch { document.getElementById('count-' + e).textContent = 'ERR'; }
+    }
+    const status = document.getElementById('status-text');
+    if (status) status.textContent = 'Dashboard refreshed at ' + new Date().toLocaleTimeString();
+    if (showToast) toast('Connected to API!');
+  }
+
+  // ── Table Loaders ────────────────────────────────────────────────────────────
+  const tableConfigs = {
+    drugs: {
+      endpoint: '/drugs/', id: 'drug_id',
+      render: r => `<td>${r.drug_id}</td><td>${r.generic_name}</td><td>${r.brand_name||'—'}</td><td>${r.dosage_form||'—'}</td><td>${r.reg_class||'—'}</td><td>${r.reorder_level??'—'}</td>`
+    },
+    inventory: {
+      endpoint: '/inventory/', id: 'inventory_id',
+      render: r => `<td>${r.inventory_id}</td><td>${r.drug_id}</td><td>${r.quantity??'—'}</td><td>${r.unit_cost??'—'}</td><td>${r.unit_price??'—'}</td><td>${r.expiry_date||'—'}</td><td>${r.last_restocked||'—'}</td>`
+    },
+    patients: {
+      endpoint: '/patients/', id: 'patient_id',
+      render: r => `<td>${r.patient_id}</td><td>${r.full_name}</td><td>${r.date_of_birth||'—'}</td><td>${r.sex||'—'}</td><td>${r.phone||'—'}</td><td>${r.philhealth_no||'—'}</td>`
+    },
+    doctors: {
+      endpoint: '/doctors/', id: 'doctor_id',
+      render: r => `<td>${r.doctor_id}</td><td>${r.full_name}</td><td>${r.prc_license_no}</td><td>${r.specialization||'—'}</td><td>${r.phone||'—'}</td>`
+    },
+    visits: {
+      endpoint: '/visits/', id: 'visit_id',
+      render: r => `<td>${r.visit_id}</td><td>${r.doctor_id}</td><td>${r.patient_id}</td><td>${r.visit_date||'—'}</td><td>${(r.notes||'—').substring(0,40)}</td>`
+    },
+    prescriptions: {
+      endpoint: '/prescriptions/', id: 'prescription_id',
+      render: r => `<td>${r.prescription_id}</td><td>${r.visit_id}</td><td>${r.drug_id}</td><td>${(r.instruction||'—').substring(0,40)}</td><td>${r.qty_prescribed}</td>`
+    },
+    billings: {
+      endpoint: '/billings/', id: 'billing_id',
+      render: r => `<td>${r.billing_id}</td><td>${r.visit_id}</td><td>${r.doctor_id}</td><td>${r.total_fee??'—'}</td><td>${r.payment_method||'—'}</td><td>${r.paid_on||'—'}</td>`
+    }
+  };
+
+  async function loadTable(name) {
+    const cfg = tableConfigs[name];
+    const tbody = document.getElementById('table-' + name);
+    tbody.innerHTML = '<tr><td colspan="20" class="text-center text-muted">Loading...</td></tr>';
+    try {
+      const data = await apiFetch(cfg.endpoint);
+      if (!data.length) { tbody.innerHTML = '<tr><td colspan="20" class="text-center text-muted">No records found.</td></tr>'; return; }
+      tbody.innerHTML = data.map(r => `
+        <tr>
+          ${cfg.render(r)}
+          <td>
+            <button class="btn btn-outline-warning btn-sm me-1" onclick="openModal('${name.replace(/s$/, '')}', ${r[cfg.id]})">Edit</button>
+            <button class="btn btn-outline-danger btn-sm" onclick="deleteRecord('${name}', ${r[cfg.id]})">Delete</button>
+          </td>
+        </tr>`).join('');
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="20" class="text-center text-danger">Error: ${e.message}</td></tr>`;
+    }
+  }
+
+  // ── Delete ──────────────────────────────────────────────────────────────────
+  async function deleteRecord(entity, id) {
+    if (!confirm('Delete this record?')) return;
+    const cfg = tableConfigs[entity];
+    try {
+      await apiFetch(cfg.endpoint + id, 'DELETE');
+      toast('Deleted successfully.');
+      loadTable(entity);
+      refreshDashboard(false);
+    } catch (e) { toast('Error: ' + e.message); }
+  }
+
+  // ── Modal Forms ──────────────────────────────────────────────────────────────
+  const forms = {
+    drug: (d={}) => `
+      <div class="mb-2"><label class="form-label" style="font-size:13px">ID (optional)</label><input type="number" class="form-control form-control-sm" id="f-drug_id" value="${d.drug_id||''}" placeholder="Leave blank to auto assign"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Generic Name *</label><input class="form-control form-control-sm" id="f-generic_name" value="${d.generic_name||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Brand Name</label><input class="form-control form-control-sm" id="f-brand_name" value="${d.brand_name||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Dosage Form</label>
+        <select class="form-select form-select-sm" id="f-dosage_form">
+          <option value="">-- select --</option>
+          ${['tablet','capsule','syrup','injection','ointment'].map(o=>`<option ${d.dosage_form===o?'selected':''}>${o}</option>`).join('')}
+        </select></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Reg. Class</label>
+        <select class="form-select form-select-sm" id="f-reg_class">
+          <option value="">-- select --</option>
+          ${['prescription','otc','controlled'].map(o=>`<option ${d.reg_class===o?'selected':''}>${o}</option>`).join('')}
+        </select></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Reorder Level</label><input type="number" class="form-control form-control-sm" id="f-reorder_level" value="${d.reorder_level??''}"/></div>`,
+
+    inventory: (d={}) => `
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Record ID (optional)</label><input type="number" class="form-control form-control-sm" id="f-inventory_id" value="${d.inventory_id||''}" placeholder="Leave blank to auto assign"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Drug ID *</label><input type="number" class="form-control form-control-sm" id="f-drug_id" value="${d.drug_id||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Quantity</label><input type="number" class="form-control form-control-sm" id="f-quantity" value="${d.quantity??''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Unit Cost</label><input type="number" step="0.01" class="form-control form-control-sm" id="f-unit_cost" value="${d.unit_cost??''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Unit Price</label><input type="number" step="0.01" class="form-control form-control-sm" id="f-unit_price" value="${d.unit_price??''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Buy Date</label><input type="date" class="form-control form-control-sm" id="f-buy_date" value="${d.buy_date||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Expiry Date</label><input type="date" class="form-control form-control-sm" id="f-expiry_date" value="${d.expiry_date||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Last Restocked</label><input type="date" class="form-control form-control-sm" id="f-last_restocked" value="${d.last_restocked||''}"/></div>`,
+
+    patient: (d={}) => `
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Full Name *</label><input class="form-control form-control-sm" id="f-full_name" value="${d.full_name||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Date of Birth</label><input type="date" class="form-control form-control-sm" id="f-date_of_birth" value="${d.date_of_birth||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Sex</label>
+        <select class="form-select form-select-sm" id="f-sex">
+          <option value="">-- select --</option>
+          <option ${d.sex==='M'?'selected':''} value="M">Male</option>
+          <option ${d.sex==='F'?'selected':''} value="F">Female</option>
+        </select></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Address</label><input class="form-control form-control-sm" id="f-address" value="${d.address||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Phone</label><input class="form-control form-control-sm" id="f-phone" value="${d.phone||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">PhilHealth No.</label><input class="form-control form-control-sm" id="f-philhealth_no" value="${d.philhealth_no||''}"/></div>`,
+
+    doctor: (d={}) => `
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Full Name *</label><input class="form-control form-control-sm" id="f-full_name" value="${d.full_name||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">PRC License No. *</label><input class="form-control form-control-sm" id="f-prc_license_no" value="${d.prc_license_no||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Specialization</label><input class="form-control form-control-sm" id="f-specialization" value="${d.specialization||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Phone</label><input class="form-control form-control-sm" id="f-phone" value="${d.phone||''}"/></div>`,
+
+    visit: (d={}) => `
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Doctor ID *</label><input type="number" class="form-control form-control-sm" id="f-doctor_id" value="${d.doctor_id||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Patient ID *</label><input type="number" class="form-control form-control-sm" id="f-patient_id" value="${d.patient_id||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Visit Date</label><input type="datetime-local" class="form-control form-control-sm" id="f-visit_date" value="${d.visit_date||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Notes</label><textarea class="form-control form-control-sm" id="f-notes" rows="3">${d.notes||''}</textarea></div>`,
+
+    prescription: (d={}) => `
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Visit ID *</label><input type="number" class="form-control form-control-sm" id="f-visit_id" value="${d.visit_id||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Drug ID *</label><input type="number" class="form-control form-control-sm" id="f-drug_id" value="${d.drug_id||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Instruction</label><textarea class="form-control form-control-sm" id="f-instruction" rows="3">${d.instruction||''}</textarea></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Qty Prescribed *</label><input type="number" class="form-control form-control-sm" id="f-qty_prescribed" value="${d.qty_prescribed||''}"/></div>`,
+
+    billing: (d={}) => `
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Visit ID *</label><input type="number" class="form-control form-control-sm" id="f-visit_id" value="${d.visit_id||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Doctor ID *</label><input type="number" class="form-control form-control-sm" id="f-doctor_id" value="${d.doctor_id||''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Total Fee</label><input type="number" step="0.01" class="form-control form-control-sm" id="f-total_fee" value="${d.total_fee??''}"/></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Payment Method</label>
+        <select class="form-select form-select-sm" id="f-payment_method">
+          <option value="">-- select --</option>
+          ${['cash','philhealth','card','hmo'].map(o=>`<option ${d.payment_method===o?'selected':''}>${o}</option>`).join('')}
+        </select></div>
+      <div class="mb-2"><label class="form-label" style="font-size:13px">Paid On</label><input type="date" class="form-control form-control-sm" id="f-paid_on" value="${d.paid_on||''}"/></div>`
+  };
+
+  const entityMap = {
+    drug: { endpoint: '/drugs/', id: 'drug_id', table: 'drugs' },
+    inventory: { endpoint: '/inventory/', id: 'inventory_id', table: 'inventory' },
+    patient: { endpoint: '/patients/', id: 'patient_id', table: 'patients' },
+    doctor: { endpoint: '/doctors/', id: 'doctor_id', table: 'doctors' },
+    visit: { endpoint: '/visits/', id: 'visit_id', table: 'visits' },
+    prescription: { endpoint: '/prescriptions/', id: 'prescription_id', table: 'prescriptions' },
+    billing: { endpoint: '/billings/', id: 'billing_id', table: 'billings' }
+  };
+
+  async function openModal(entity, id=null) {
+    currentEntity = entity;
+    currentId = id;
+    let data = {};
+    if (id !== null) {
+      try { data = await apiFetch(entityMap[entity].endpoint + id); } catch(e) { toast('Could not load record.'); return; }
+    }
+    document.getElementById('modal-title').textContent = (id ? 'Edit' : 'Add') + ' ' + entity.charAt(0).toUpperCase() + entity.slice(1);
+    document.getElementById('modal-body').innerHTML = forms[entity](data);
+    modalInstance = new bootstrap.Modal(document.getElementById('formModal'));
+    modalInstance.show();
+  }
+
+  function getFormData(entity) {
+    const fields = {
+      drug: ['drug_id','generic_name','brand_name','dosage_form','reg_class','reorder_level'],
+      inventory: ['inventory_id','drug_id','quantity','unit_cost','unit_price','buy_date','expiry_date','last_restocked'],
+      patient: ['full_name','date_of_birth','sex','address','phone','philhealth_no'],
+      doctor: ['full_name','prc_license_no','specialization','phone'],
+      visit: ['doctor_id','patient_id','visit_date','notes'],
+      prescription: ['visit_id','drug_id','instruction','qty_prescribed'],
+      billing: ['visit_id','doctor_id','total_fee','payment_method','paid_on']
+    };
+    const obj = {};
+    for (const f of fields[entity]) {
+      const el = document.getElementById('f-' + f);
+      if (!el) continue;
+      let v = el.value.trim();
+      if (v === '') { obj[f] = null; continue; }
+      if (['reorder_level','quantity','drug_id','patient_id','doctor_id','visit_id','qty_prescribed'].includes(f)) v = parseInt(v);
+      else if (['unit_cost','unit_price','total_fee'].includes(f)) v = parseFloat(v);
+      obj[f] = v;
+    }
+    return obj;
+  }
+
+  async function submitForm() {
+    const cfg = entityMap[currentEntity];
+    const body = getFormData(currentEntity);
+    try {
+      if (currentId) {
+        await apiFetch(cfg.endpoint + currentId, 'PUT', body);
+        toast('Updated successfully.');
+      } else {
+        await apiFetch(cfg.endpoint, 'POST', body);
+        toast('Added successfully.');
+      }
+      modalInstance.hide();
+      loadTable(cfg.table);
+      refreshDashboard(false);
+    } catch(e) { toast('Error: ' + e.message); }
+  }
+
+  // init dashboard counts on load
+  window.addEventListener('load', refreshDashboard);
+</script>
+</body>
+</html>
